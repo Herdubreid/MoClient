@@ -12,6 +12,10 @@ using Console = Colorful.Console;
 
 namespace Celin
 {
+    [Subcommand(typeof(MoDelCmd))]
+    [Subcommand(typeof(MoEditCmd))]
+    [Subcommand(typeof(MoAddCmd))]
+    [Subcommand(typeof(MoGetCmd))]
     [Subcommand(typeof(MoListCmd))]
     [Subcommand(typeof(MoDownloadCmd))]
     [Subcommand(typeof(MoUploadCmd))]
@@ -38,7 +42,7 @@ namespace Celin
                 AIS.AttachmentListResponse response;
                 try
                 {
-                    await Authenticate();
+                    Authenticate();
                     StartCommand("MoList");
                     response = await Server.RequestAsync(mo);
                     EndCommand();
@@ -49,9 +53,141 @@ namespace Celin
                     throw;
                 }
 
-                Console.WriteLine(response.mediaObjects.Length, Color.Azure);
+                Console.WriteLine(string.Format("{0} has {1} attachments:", MoStructure, response.mediaObjects.Length), Color.Azure);
+                foreach (var a in response.mediaObjects)
+                {
+                    Console.WriteLine(string.Format("{0}\t{1}", a.sequence, a.itemName), Color.Azure);
+                }
             }
             public MoListCmd(IConfiguration config, ILogger logger, AIS.Server server)
+                : base(config, logger, server) { }
+        }
+        [Command("get", Description = "Get Text Attachment")]
+        class MoGetCmd : MoBaseCmd<AIS.MoGetText>
+        {
+            [Argument(3, Description = "Mo Sequence Number")]
+            int? Sequence { get; set; }
+            async Task OnExecuteAsync()
+            {
+                var mo = GetMoRequest();
+                mo.multipleMode = true;
+                mo.sequence = Sequence;
+
+                AIS.AttachmentResponse response;
+                try
+                {
+                    Authenticate();
+                    StartCommand("MoGet");
+                    response = await Server.RequestAsync(mo);
+                    EndCommand();
+                }
+                catch (Exception)
+                {
+                    EndCommand(false);
+                    throw;
+                }
+
+                foreach (var a in response.textAttachments)
+                {
+                    Console.WriteLine(string.Format("{0}\t{1}", a.itemName, a.text), Color.Azure);
+                }
+            }
+            public MoGetCmd(IConfiguration config, ILogger logger, AIS.Server server)
+                : base(config, logger, server) { }
+        }
+        [Command("add", Description = "Add Text Attachment")]
+        class MoAddCmd : MoBaseCmd<AIS.MoAddText>
+        {
+            [Argument(3, Description = "Text")]
+            [Required]
+            public string Text { get; set; }
+            [Option("-n|--name", CommandOptionType.SingleValue, Description = "Name")]
+            public string Name { get; set; }
+            async Task OnExecuteAsync()
+            {
+                var mo = GetMoRequest();
+                mo.itemName = Name;
+                mo.inputText = Text;
+                AIS.AttachmentResponse response;
+                try
+                {
+                    Authenticate();
+                    StartCommand("MoAdd");
+                    response = await Server.RequestAsync(mo);
+                    EndCommand();
+                }
+                catch (Exception)
+                {
+                    EndCommand(false);
+                    throw;
+                }
+                Console.WriteLine("{0}, Sequence {1}", response.addTextStatus, response.sequence);
+            }
+            public MoAddCmd(IConfiguration config, ILogger logger, AIS.Server server)
+                : base(config, logger, server) { }
+        }
+        [Command("edit", Description = "Edit text attachment")]
+        class MoEditCmd : MoBaseCmd<AIS.MoUpdateText>
+        {
+            [Argument(3, Description = "Sequence Number")]
+            [Required]
+            int Sequence { get; set; }
+            [Argument(4, Description = "Text")]
+            [Required]
+            public string Text { get; set; }
+            [Option("-o|--override", CommandOptionType.NoValue, Description = "Override existing text")]
+            bool Override { get; set; }
+            async Task OnExecuteAsync()
+            {
+                var mo = GetMoRequest();
+                mo.inputText = Text;
+                mo.sequence = Sequence;
+                mo.appendText = !Override;
+                AIS.AttachmentResponse response;
+                try
+                {
+                    Authenticate();
+                    StartCommand("MoEdit");
+                    response = await Server.RequestAsync(mo);
+                    EndCommand();
+                }
+                catch (Exception)
+                {
+                    EndCommand(false);
+                    throw;
+                }
+                Console.WriteLine("{0}", response.updateTextStatus);
+            }
+
+            public MoEditCmd(IConfiguration config, ILogger logger, AIS.Server server)
+                : base(config, logger, server) { }
+        }
+        [Command("del", Description = "Delete Attachment")]
+        class MoDelCmd : MoBaseCmd<AIS.MoDelete>
+        {
+            [Argument(3, Description = "Sequence Number")]
+            [Required]
+            int Sequence { get; set; }
+            async Task OnExecuteAsync()
+            {
+                var mo = GetMoRequest();
+                mo.sequence = Sequence;
+                AIS.AttachmentResponse response;
+                try
+                {
+                    Authenticate();
+                    StartCommand("MoDel");
+                    response = await Server.RequestAsync(mo);
+                    EndCommand();
+                }
+                catch (Exception)
+                {
+                    EndCommand(false);
+                    throw;
+                }
+                Console.WriteLine("{0}", response.deleteStatus);
+            }
+            public MoDelCmd(IConfiguration config, ILogger logger, AIS.Server server)
                 : base(config, logger, server) { }
         }
         [Command("download", Description = "Download File Attachment")]
@@ -70,7 +206,7 @@ namespace Celin
                 Stream response;
                 try
                 {
-                    await Authenticate();
+                    Authenticate();
                     StartCommand("MoDownload");
                     response = await Server.RequestAsync(mo);
                     EndCommand();
@@ -107,7 +243,7 @@ namespace Celin
                 };
                 try
                 {
-                    await Authenticate();
+                    Authenticate();
                     StartCommand("MoUpload");
                     response = await Server.RequestAsync(mo, new StreamContent(stream));
                     EndCommand();

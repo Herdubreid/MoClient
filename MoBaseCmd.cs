@@ -44,23 +44,26 @@ namespace Celin
         }
         protected T GetMoRequest()
         {
-            var mo = new T();
-            mo.formName = FormName ?? "FORM";
-            mo.version = Version;
-            mo.moStructure = MoStructure;
-            mo.moKey = MoKey.Split(";");
+            var mo = new T
+            {
+                formName = FormName ?? "FORM",
+                version = Version,
+                moStructure = MoStructure,
+                moKey = MoKey.Split(";")
+            };
             return mo;
         }
-        protected async Task Authenticate()
+        protected void Authenticate()
         {
-            if (User == null) User = Prompt.GetString("User:");
-            if (Password == null) Password = Prompt.GetPassword("Password:");
+            if (string.IsNullOrEmpty(User)) User = Prompt.GetString("User:");
+            if (string.IsNullOrEmpty(Password)) Password = Prompt.GetPassword("Password:");
             Server.AuthRequest.username = User;
             Server.AuthRequest.password = Password;
-
+            /*
             StartCommand("Authenticate");
             await Server.AuthenticateAsync();
             EndCommand();
+            */
         }
         protected async Task LogOut()
         {

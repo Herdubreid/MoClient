@@ -34,6 +34,7 @@ namespace Celin
             app.Conventions
                 .UseDefaultConventions()
                 .UseConstructorInjection(services);
+            app.OnExecute(() => app.ShowHelp());
 
             try
             {
